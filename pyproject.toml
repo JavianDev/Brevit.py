@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brevit"
+version = "0.1.1"
+description = "A high-performance Python library for semantically compressing and optimizing data before sending it to a Large Language Model (LLM)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "JavianDev", email = "support@javianpicardo.com"}
+]
+keywords = ["llm", "token-optimization", "json-compression", "ai", "semantic-compression"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+yaml = ["PyYAML>=6.0"]
+jsonpath = ["jsonpath-ng>=1.6.0"]
+
+[project.urls]
+Homepage = "https://github.com/JavianDev/Brevit.py"
+Documentation = "https://github.com/JavianDev/Brevit.py"
+Repository = "https://github.com/JavianDev/Brevit.py.git"
+Issues = "https://github.com/JavianDev/Brevit.py/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]
