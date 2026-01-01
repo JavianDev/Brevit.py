@@ -243,21 +243,6 @@ optimized = await brevit.brevity(json_string)
 # @o.status:SHIPPED
 ```
 
-#### Example 1.2a: Abbreviations Disabled
-
-```python
-config_no_abbr = BrevitConfig(
-    json_mode=JsonOptimizationMode.Flatten,
-    enable_abbreviations=False  # Disable abbreviations
-)
-brevit_no_abbr = BrevitClient(config_no_abbr)
-
-json_string = '{"order": {"id": "o-456", "status": "SHIPPED"}}'
-optimized = await brevit_no_abbr.brevity(json_string)
-# Output (without abbreviations):
-# order.id:o-456
-# order.status:SHIPPED
-```
 
 #### Example 1.3: Complex Nested JSON with Arrays
 
@@ -301,52 +286,6 @@ optimized = await brevit.brevity(complex_data)
 # luis,9.2,540,2,Ridge Overlook,False
 ```
 
-#### Example 1.3a: Complex Data with Abbreviations Disabled
-
-```python
-config_no_abbr = BrevitConfig(
-    json_mode=JsonOptimizationMode.Flatten,
-    enable_abbreviations=False  # Disable abbreviations
-)
-brevit_no_abbr = BrevitClient(config_no_abbr)
-
-complex_data = {
-    "context": {
-        "task": "Our favorite hikes together",
-        "location": "Boulder",
-        "season": "spring_2025"
-    },
-    "friends": ["ana", "luis", "sam"],
-    "hikes": [
-        {
-            "id": 1,
-            "name": "Blue Lake Trail",
-            "distanceKm": 7.5,
-            "elevationGain": 320,
-            "companion": "ana",
-            "wasSunny": True
-        },
-        {
-            "id": 2,
-            "name": "Ridge Overlook",
-            "distanceKm": 9.2,
-            "elevationGain": 540,
-            "companion": "luis",
-            "wasSunny": False
-        }
-    ]
-}
-
-optimized = await brevit_no_abbr.brevity(complex_data)
-# Output (without abbreviations):
-# context.task:Our favorite hikes together
-# context.location:Boulder
-# context.season:spring_2025
-# friends[3]:ana,luis,sam
-# hikes[2]{companion,distanceKm,elevationGain,id,name,wasSunny}:
-# ana,7.5,320,1,Blue Lake Trail,True
-# luis,9.2,540,2,Ridge Overlook,False
-```
 
 #### Example 1.4: Different JSON Optimization Modes
 
@@ -793,14 +732,16 @@ user = {
 }
 
 optimized = await brevit.optimize(user)
-# Output:
-# id: u-123
-# name: Javian
-# isActive: True
-# contact.email: support@javianpicardo.com
-# contact.phone: None
-# orders[0].orderId: o-456
-# orders[0].status: SHIPPED
+# Output (with abbreviations enabled by default):
+# @c=contact
+# @o=orders
+# id:u-123
+# name:Javian
+# isActive:True
+# @c.email:support@javianpicardo.com
+# @c.phone:None
+# @o[0].orderId:o-456
+# @o[0].status:SHIPPED
 ```
 
 ### Example 2: Optimize JSON String
