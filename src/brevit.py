@@ -47,6 +47,8 @@ class BrevitConfig:
     image_mode: ImageOptimizationMode = ImageOptimizationMode.Ocr
     json_paths_to_keep: List[str] = field(default_factory=list)
     long_text_threshold: int = 500
+    enable_abbreviations: bool = True
+    abbreviation_threshold: int = 2
 
 # endregion
 
@@ -210,11 +212,152 @@ class BrevitClient:
                 prefix = "value"  # Handle root-level value
             output.append(f"{prefix}:{str(node)}")
 
+    def _generate_abbreviations(self, paths: list[str]) -> tuple[dict[str, str], list[str]]:
+        """Generates abbreviations for frequently repeated prefixes."""
+        if not self._config.enable_abbreviations:
+            return {}, []
+        
+        # Count prefix frequencies
+        prefix_counts: dict[str, int] = {}
+        
+        for path in paths:
+            # Extract all prefixes (e.g., "user", "user.name", "order.items")
+            parts = path.split('.')
+            for i in range(1, len(parts) + 1):
+                prefix = '.'.join(parts[:i])
+                prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+        
+        # Filter prefixes that meet threshold
+        frequent_prefixes = [
+            (prefix, count) for prefix, count in prefix_counts.items()
+            if count >= self._config.abbreviation_threshold
+        ]
+        # Sort by: 1) count (desc), 2) length (asc) - prefer shorter, more frequent
+        frequent_prefixes.sort(key=lambda x: (-x[1], len(x[0])))
+        
+        # Generate abbreviations
+        abbreviation_map: dict[str, str] = {}
+        definitions: list[str] = []
+        abbr_counter = 0
+        used_abbrs: set[str] = set()
+        
+        for prefix, count in frequent_prefixes:
+            # Calculate savings: (prefix.length - abbr.length) * count
+            # Only abbreviate if it saves tokens
+            abbr = self._generate_abbreviation(prefix, abbr_counter, used_abbrs)
+            definition_cost = len(prefix) + len(abbr) + 3  # "@x=prefix"
+            savings = (len(prefix) - len(abbr) - 1) * count  # -1 for "@"
+            
+            # Only create abbreviation if it saves tokens (accounting for definition)
+            if savings > definition_cost:
+                abbreviation_map[prefix] = abbr
+                definitions.append(f"@{abbr}={prefix}")
+                abbr_counter += 1
+        
+        return abbreviation_map, definitions
+    
+    def _generate_abbreviation(self, prefix: str, counter: int, used_abbrs: set[str]) -> str:
+        """Generates a short abbreviation for a prefix."""
+        # Strategy 1: Use first letter if available and not used
+        first_letter = prefix.split('.')[0][0].lower()
+        if first_letter not in used_abbrs:
+            used_abbrs.add(first_letter)
+            return first_letter
+        
+        # Strategy 2: Use first letter of each part (e.g., "order.items" -> "oi")
+        parts = prefix.split('.')
+        if len(parts) > 1:
+            multi_letter = ''.join(p[0] for p in parts).lower()
+            if multi_letter not in used_abbrs and len(multi_letter) <= 3:
+                used_abbrs.add(multi_letter)
+                return multi_letter
+        
+        # Strategy 3: Use counter-based abbreviation (a, b, c, ..., z, aa, ab, ...)
+        abbr = ''
+        num = counter
+        while True:
+            abbr = chr(97 + (num % 26)) + abbr  # 97 = 'a'
+            num = num // 26 - 1
+            if num < 0:
+                break
+        
+        used_abbrs.add(abbr)
+        return abbr
+    
+    def _apply_abbreviations(self, path: str, abbreviation_map: dict[str, str]) -> str:
+        """Applies abbreviations to a path string."""
+        if not self._config.enable_abbreviations or not abbreviation_map:
+            return path
+        
+        # Find the longest matching prefix
+        best_match = ''
+        best_abbr = ''
+        
+        for prefix, abbr in abbreviation_map.items():
+            if path.startswith(prefix + '.') and len(prefix) > len(best_match):
+                best_match = prefix
+                best_abbr = abbr
+        
+        if best_match:
+            return f"@{best_abbr}.{path[len(best_match) + 1:]}"
+        
+        return path
+    
     def _flatten_object(self, obj: Any) -> str:
-        """Flattens a Python dict/list into a token-efficient string with tabular optimization."""
+        """Flattens a Python dict/list into a token-efficient string with tabular optimization and abbreviations."""
         output: list[str] = []
         self._flatten(obj, "", output)
-        return "\n".join(output)
+        
+        # Extract paths from output (before values)
+        paths: list[str] = []
+        for line in output:
+            colon_index = line.find(':')
+            if colon_index > 0:
+                path_part = line[:colon_index]
+                # Handle tabular arrays: "key[count]{fields}:"
+                bracket_index = path_part.find('[')
+                if bracket_index > 0:
+                    paths.append(path_part[:bracket_index])
+                else:
+                    paths.append(path_part)
+            else:
+                paths.append(line.split(':')[0])
+        
+        # Generate abbreviations
+        abbreviation_map, definitions = self._generate_abbreviations(paths)
+        
+        # Apply abbreviations to output
+        abbreviated_output: list[str] = []
+        for line in output:
+            # Handle different line formats:
+            # 1. "key:value"
+            # 2. "key[count]:value1,value2"
+            # 3. "key[count]{fields}:\nrow1\nrow2"
+            
+            colon_index = line.find(':')
+            if colon_index == -1:
+                abbreviated_output.append(line)
+                continue
+            
+            path_part = line[:colon_index]
+            value_part = line[colon_index:]
+            
+            # Handle tabular arrays - abbreviate the base path
+            bracket_index = path_part.find('[')
+            if bracket_index > 0:
+                base_path = path_part[:bracket_index]
+                rest = path_part[bracket_index:]
+                abbreviated_base = self._apply_abbreviations(base_path, abbreviation_map)
+                abbreviated_output.append(abbreviated_base + rest + value_part)
+            else:
+                abbreviated_path = self._apply_abbreviations(path_part, abbreviation_map)
+                abbreviated_output.append(abbreviated_path + value_part)
+        
+        # Combine: definitions first, then abbreviated output
+        if definitions:
+            return "\n".join(definitions) + "\n" + "\n".join(abbreviated_output)
+        
+        return "\n".join(abbreviated_output)
 
     def _analyze_data_structure(self, data: Any) -> Dict[str, Any]:
         """Analyzes data structure to determine the best optimization strategy."""
