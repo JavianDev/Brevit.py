@@ -54,3 +54,6 @@ htmlcov/
 .env
 .env.local
 
+# PyPI credentials (never commit!)
+.pypirc
+
