@@ -1,24 +1,24 @@
-# Brevit.py
+# brevit
 
 A high-performance Python library for semantically compressing and optimizing data before sending it to a Large Language Model (LLM). Dramatically reduce token costs while maintaining data integrity and readability.
 
 ## Table of Contents
 
-- [Why Brevit.py?](#why-brevitpy)
+- [Why brevit?](#why-brevit)
 - [Key Features](#key-features)
-- [When Not to Use Brevit.py](#when-not-to-use-brevitpy)
+- [When Not to Use brevit](#when-not-to-use-brevit)
 - [Benchmarks](#benchmarks)
 - [Installation & Quick Start](#installation--quick-start)
 - [Playgrounds](#playgrounds)
 - [CLI](#cli)
 - [Format Overview](#format-overview)
 - [API](#api)
-- [Using Brevit.py in LLM Prompts](#using-brevitpy-in-llm-prompts)
+- [Using brevit in LLM Prompts](#using-brevit-in-llm-prompts)
 - [Syntax Cheatsheet](#syntax-cheatsheet)
 - [Other Implementations](#other-implementations)
 - [Full Specification](#full-specification)
 
-## Why Brevit.py?
+## Why brevit?
 
 ### Python-Specific Advantages
 
@@ -53,7 +53,7 @@ explicit = await brevit.optimize(complex_order)
 
 ### Automatic Strategy Selection
 
-Brevit.py now includes the `.brevity()` method that automatically analyzes your data and selects the optimal optimization strategy:
+brevit now includes the `.brevity()` method that automatically analyzes your data and selects the optimal optimization strategy:
 
 ```python
 data = {
@@ -199,7 +199,7 @@ optimized = await brevit.brevity(data)
 
 ## Complete Usage Examples
 
-Brevit.py supports three main data types: **JSON objects/strings**, **text files/strings**, and **images**. Here's how to use each:
+brevit supports three main data types: **JSON objects/strings**, **text files/strings**, and **images**. Here's how to use each:
 
 ### 1. JSON Optimization Examples
 
@@ -839,7 +839,7 @@ optimized = await brevit.optimize(image_data)
 # Will trigger image optimization
 ```
 
-## When Not to Use Brevit.py
+## When Not to Use brevit
 
 Consider alternatives when:
 
@@ -1116,7 +1116,7 @@ class BrevitConfig:
 - `Ocr` - Extract text via OCR
 - `Metadata` - Extract metadata only
 
-## Using Brevit.py in LLM Prompts
+## Using brevit in LLM Prompts
 
 ### Best Practices
 
